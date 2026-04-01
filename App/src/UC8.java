@@ -1,74 +1,74 @@
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
-class Reservation {
-    private String reservationId;
-    private String guestName;
-    private String roomType;
-    private double totalCost;
-
-    public Reservation(String reservationId, String guestName, String roomType, double totalCost) {
-        this.reservationId = reservationId;
-        this.guestName = guestName;
-        this.roomType = roomType;
-        this.totalCost = totalCost;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("ID: %-10s | Guest: %-12s | Type: %-10s | Cost: $%.2f",
-                reservationId, guestName, roomType, totalCost);
-    }
-
-    public double getTotalCost() { return totalCost; }
-}
-
-class BookingHistory {
-    private List<Reservation> history;
-
-    public BookingHistory() {
-        this.history = new ArrayList<>();
-    }
-
-    public void recordReservation(Reservation res) {
-        history.add(res);
-        System.out.println("History Updated: " + res.getReservationId() + " recorded.");
-    }
-
-    public List<Reservation> getAllRecords() {
-        return new ArrayList<>(history);
+class InvalidBookingException extends Exception {
+    public InvalidBookingException(String message) {
+        super(message);
     }
 }
 
-class BookingReportService {
-    public void generateSummary(List<Reservation> records) {
-        System.out.println("\n======= MANAGEMENT SUMMARY REPORT =======");
-        System.out.println("Total Bookings: " + records.size());
+class BookingValidator {
+    private Map<String, Integer> inventory;
 
-        double revenue = 0;
-        for (Reservation res : records) {
-            revenue += res.getTotalCost();
-            System.out.println(res);
+    public BookingValidator(Map<String, Integer> inventory) {
+        this.inventory = inventory;
+    }
+
+    public void validateBooking(String guestName, String roomType) throws InvalidBookingException {
+        if (guestName == null || guestName.trim().isEmpty()) {
+            throw new InvalidBookingException("Validation Failed: Guest name cannot be empty.");
         }
 
-        System.out.println("-----------------------------------------");
-        System.out.printf("Total Revenue Generated: $%.2f\n", revenue);
-        System.out.println("=========================================\n");
+        if (!inventory.containsKey(roomType)) {
+            throw new InvalidBookingException("Validation Failed: Room type '" + roomType + "' does not exist.");
+        }
+
+        if (inventory.get(roomType) <= 0) {
+            throw new InvalidBookingException("Validation Failed: No availability for '" + roomType + "'.");
+        }
     }
 }
 
-public class UC8 {
+class ReliableBookingSystem {
+    private Map<String, Integer> inventory = new HashMap<>();
+    private BookingValidator validator;
+
+    public ReliableBookingSystem() {
+        inventory.put("Deluxe", 1);
+        this.validator = new BookingValidator(inventory);
+    }
+
+    public void processBooking(String guestName, String roomType) {
+        try {
+            System.out.println("Processing request for " + guestName + "...");
+
+            validator.validateBooking(guestName, roomType);
+
+            inventory.put(roomType, inventory.get(roomType) - 1);
+            System.out.println("SUCCESS: Booking confirmed for " + guestName);
+
+        } catch (InvalidBookingException e) {
+            System.err.println("ERROR: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("FATAL: An unexpected error occurred.");
+        } finally {
+            System.out.println("System Ready for next request.\n");
+        }
+    }
+}
+
+public class UC9 {
     public static void main(String[] args) {
-        System.out.println("Hotel Booking System v8.0 - History & Reporting\n");
+        System.out.println("Hotel Booking System v9.0 - Error Handling & Validation\n");
 
-        BookingHistory historyStore = new BookingHistory();
-        BookingReportService reportService = new BookingReportService();
+        ReliableBookingSystem system = new ReliableBookingSystem();
 
-        historyStore.recordReservation(new Reservation("RES-001", "Alice", "Deluxe", 250.0));
-        historyStore.recordReservation(new Reservation("RES-002", "Bob", "Suite", 500.0));
-        historyStore.recordReservation(new Reservation("RES-003", "Charlie", "Standard", 150.0));
+        system.processBooking("Alice", "Deluxe");
 
-        List<Reservation> currentHistory = historyStore.getAllRecords();
-        reportService.generateSummary(currentHistory);
+        system.processBooking("Bob", "Deluxe");
+
+        system.processBooking("Charlie", "Penthouse");
+
+        system.processBooking("", "Deluxe");
     }
 }
